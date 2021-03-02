@@ -1,0 +1,6 @@
+git+https://github.com/ApfelPresse/CGSearchRace.git#egg=CGSearchRace
+numpy
+matplotlib
+neat-python
+graphviz
+imageio
