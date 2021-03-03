@@ -32,8 +32,6 @@ def plot_graphics(config, stats, winner):
         -9: 'Distance Check 1',
         -8: 'Car Y',
         -7: 'Car X',
-        -6: 'Check Y 3',
-        -5: 'Check X 3',
         -4: 'Check Y 2',
         -3: 'Check X 2',
         -2: 'Check Y 1',
@@ -55,15 +53,22 @@ if __name__ == '__main__':
                          neat.DefaultSpeciesSet, neat.DefaultStagnation,
                          config_file)
 
-    p = neat.Population(config)
-    # p = neat.Checkpointer.restore_checkpoint('main_neat-checkpoint-6488')
+    # p = neat.Population(config)
+    p = neat.Checkpointer.restore_checkpoint('checkpoints/neat-checkpoint-99')
+
+    # if True:
+    #     population = neat.Checkpointer.restore_checkpoint('checkpoints/neat-checkpoint-99')
+    #     winner = population.run(eval_genomes, 1)
+    #     net = FeedForwardNetwork.create(winner, config)
+    #     simulate(net, True)
+    #     exit(0)
 
     p.add_reporter(neat.StdOutReporter(True))
     stats = neat.StatisticsReporter()
     p.add_reporter(stats)
-    p.add_reporter(neat.Checkpointer(1, filename_prefix="checkpoints/neat-checkpoint-"))
+    p.add_reporter(neat.Checkpointer(10, filename_prefix="checkpoints/neat-checkpoint-"))
 
-    winner = p.run(eval_genomes, 100 * 100)
+    winner = p.run(eval_genomes, 1000)
 
     print('\nBest genome:\n{!s}'.format(winner))
 

@@ -1,3 +1,6 @@
 *.svg
 *.gv
 .idea
+*.gif
+checkpoints/neat-checkpoint-*
+__pycache__

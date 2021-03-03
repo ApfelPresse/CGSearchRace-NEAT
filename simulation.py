@@ -1,5 +1,6 @@
 import math
 
+import numpy as np
 from CGSearchRace.Constants import Constants
 from CGSearchRace.Referee import Referee
 from CGSearchRace.Tracks import tracks
@@ -13,57 +14,80 @@ def min_max_scaler(value: float, min_value: float, max_value: float, range_from:
     return (value - min_value) / (max_value - min_value) * width + range_from
 
 
+def distance_line_and_point(x, y, check_x, check_y, angle):
+    length = 10000
+    endy = y + length * math.sin(angle)
+    endx = x + length * math.cos(angle)
+    p1 = np.array([x, y])
+    p2 = np.array([endx, endy])
+    p3 = np.array([check_x, check_y])
+
+    d = np.linalg.norm(np.cross(p2 - p1, p1 - p3)) / np.linalg.norm(p2 - p1)
+    if d < Constants.CheckpointRadius:
+        d = 0
+    return d
+
+
 def simulate(net, create_gif=False):
-    score = 0
-    for i, track in enumerate(tracks):
+    Constants.MAX_TIME = 100
+    Constants.Laps = 1
+    Constants.CheckpointRadius = 400
+
+    total_score = 0
+    for i, track in enumerate(tracks[:5]):
         ref = Referee(track)
 
-        score_, looses = run_track(net, ref, create_gif)
-        score += score_
+        score_run, looses = run_track(net, ref, create_gif)
+        total_score += score_run
 
         diff_checkpoints = ref.game.totalCheckpoints - ref.game.currentCheckpoint
-        score += diff_checkpoints * 100
+        total_score += diff_checkpoints * 100
 
         if looses:
-            score += Constants.MAX_TIME * 2
+            total_score += Constants.MAX_TIME * 2
 
-    return score
+    return -total_score
+
+
+def distance(p1, p2):
+    return math.sqrt(((p1[0] - p2[0]) ** 2) + ((p1[1] - p2[1]) ** 2))
 
 
 def run_track(net, ref, create_gif):
-    offset = 4000
+    offset = 2000
     max_x = Constants.Width + offset
     max_y = Constants.Height + offset
     max_thrust = Constants.CAR_MAX_THRUST
     max_time = Constants.MAX_TIME
-
+    max_distance = math.sqrt(max_x ** 2 + max_y ** 2)
     images = []
 
     looses = False
     score = 0
     for i in range(max_time):
-        current_checkpoint = ref.game.get_next_checkpoint_id()
-        check_x = ref.game.checkpoints[current_checkpoint].x
-        check_y = ref.game.checkpoints[current_checkpoint].y
+        cp = ref.game.checkpoints
+        cp_id1 = ref.game.get_next_checkpoint_id()
+        cp_id2 = ref.game.get_next_checkpoint_id(2)
 
-        current_checkpoint = ref.game.get_next_checkpoint_id(2)
-        check_x_2 = ref.game.checkpoints[current_checkpoint].x
-        check_y_2 = ref.game.checkpoints[current_checkpoint].y
-
-        current_checkpoint = ref.game.get_next_checkpoint_id(3)
-        check_x_3 = ref.game.checkpoints[current_checkpoint].x
-        check_y_3 = ref.game.checkpoints[current_checkpoint].y
-
-        angle = ref.game.car.angle
-
-        vx = ref.game.car.vx
-        vy = ref.game.car.vx
-
-        distance_next_checkpoint = math.sqrt(((check_x - ref.game.car.x) ** 2) + ((check_y - ref.game.car.y) ** 2))
-        max_distance = math.sqrt(max_x ** 2 + max_y ** 2)
-
-        input_net = create_net_input(angle, check_x, check_x_2, check_x_3, check_y, check_y_2, check_y_3,
-                                     distance_next_checkpoint, max_distance, max_x, max_y, offset, ref, vx, vy)
+        input_net = create_net_input({
+            "max_distance": max_distance,
+            "max_x": max_x,
+            "max_y": max_y,
+            "offset": offset,
+            "angle": ref.game.car.angle,
+            "vx": ref.game.car.vx,
+            "vy": ref.game.car.vy,
+            "car_x": ref.game.car.x,
+            "car_y": ref.game.car.y,
+            "check1_x": cp[cp_id1].x,
+            "check1_y": cp[cp_id1].y,
+            "check2_x": cp[cp_id2].x,
+            "check2_y": cp[cp_id2].y,
+            "dist_check1": distance([cp[cp_id1].x, cp[cp_id1].y], [ref.game.car.x, ref.game.car.y]),
+            "dist_check2": distance([cp[cp_id2].x, cp[cp_id2].y], [ref.game.car.x, ref.game.car.y]),
+            "angle_distance_check1": distance_line_and_point(ref.game.car.x, ref.game.car.y, cp[cp_id1].x, cp[cp_id1].y,
+                                                             ref.game.car.angle),
+        })
 
         predict = net.activate(input_net)
 
@@ -72,10 +96,11 @@ def run_track(net, ref, create_gif):
         input_thrust = int(predict[2] * max_thrust)
 
         ref.game.input = f"{input_x} {input_y} {input_thrust}"
+        # ref.game.input = f"{cp[cp_id1].x} {cp[cp_id1].y} 50"
         ref.game_turn()
 
         if create_gif and i % 2 == 0:
-            images.append(plot_current_frame(ref.game.checkpoints, ref.game.get_next_checkpoint_id(), ref.game.car))
+            images.append(plot_current_frame(cp, cp_id1, ref.game.car))
 
         # exit earlier
         if i > (ref.game.currentCheckpoint + 1) * 35:
@@ -95,20 +120,18 @@ def run_track(net, ref, create_gif):
     return score, looses
 
 
-def create_net_input(angle, check_x, check_x_2, check_x_3, check_y, check_y_2, check_y_3, distance_next_checkpoint,
-                     max_distance, max_x, max_y, offset, ref, vx, vy):
+def create_net_input(params):
     input_net = [
-        min_max_scaler(check_x, -offset, max_x),
-        min_max_scaler(check_y, -offset, max_y),
-        min_max_scaler(check_x_2, -offset, max_x),
-        min_max_scaler(check_y_2, -offset, max_y),
-        min_max_scaler(check_x_3, -offset, max_x),
-        min_max_scaler(check_y_3, -offset, max_y),
-        min_max_scaler(ref.game.car.x, -offset, max_x),
-        min_max_scaler(ref.game.car.y, -offset, max_y),
-        min_max_scaler(distance_next_checkpoint, 0, max_distance),
-        min_max_scaler(angle, 0, (2 * Constants.PI)),
-        min_max_scaler(vx, -1000, 2000),
-        min_max_scaler(vy, -1000, 2000),
+        min_max_scaler(params["check1_x"], -params["offset"], params["max_x"]),
+        min_max_scaler(params["check1_y"], -params["offset"], params["max_y"]),
+        min_max_scaler(params["check2_x"], -params["offset"], params["max_x"]),
+        min_max_scaler(params["check2_y"], -params["offset"], params["max_y"]),
+        min_max_scaler(params["car_x"], -params["offset"], params["max_x"]),
+        min_max_scaler(params["car_y"], -params["offset"], params["max_y"]),
+        min_max_scaler(params["dist_check1"], 0, params["max_distance"]),
+        min_max_scaler(params["dist_check2"], 0, params["max_distance"]),
+        min_max_scaler(params["angle_distance_check1"], 0, params["max_distance"]),
+        min_max_scaler(params["vx"], -1000, 2000),
+        min_max_scaler(params["vy"], -1000, 2000),
     ]
     return input_net
