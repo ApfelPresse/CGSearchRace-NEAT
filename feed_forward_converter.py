@@ -399,12 +399,12 @@ class FeedForwardNetwork(object):
 # JUST COPY AND PASTE FROM https://neat-python.readthedocs.io/ TO SERIALIZE IT FOR CODING GAMES
 ###################################################################################################
 ###################################################################################################
-# SPLITTER#
+# SPLITTER #
 
 def convert_module_to_base64():
     with open("feed_forward_converter.py", "r") as file:
         content = file.read()
-        content = content.split("# SPLITTER#")[0]
+        content = content.split("# SPLITTER #")[0]
         neat_module_base64 = base64.b64encode(content.encode()).decode()
 
         print(f'neat_module = "{neat_module_base64}"')
