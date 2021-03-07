@@ -30,22 +30,14 @@ def distance_line_and_point(x, y, check_x, check_y, angle):
 
 def simulate(net, create_gif=False):
     Constants.MAX_TIME = 100
-    Constants.Laps = 1
-    Constants.CheckpointRadius = 400
+    Constants.Laps = 2
 
     total_score = 0
-    for i, track in enumerate(tracks[:5]):
+    tr = [0, 1, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+    track_subset = [tracks[i] for i in tr]
+    for i, track in enumerate(track_subset):
         ref = Referee(track)
-
-        score_run, looses = run_track(net, ref, create_gif)
-        total_score += score_run
-
-        diff_checkpoints = ref.game.totalCheckpoints - ref.game.currentCheckpoint
-        total_score += diff_checkpoints * 100
-
-        if looses:
-            total_score += Constants.MAX_TIME * 2
-
+        total_score += run_track(net, ref, create_gif)
     return -total_score
 
 
@@ -58,13 +50,10 @@ def run_track(net, ref, create_gif):
     max_x = Constants.Width + offset
     max_y = Constants.Height + offset
     max_thrust = Constants.CAR_MAX_THRUST
-    max_time = Constants.MAX_TIME
     max_distance = math.sqrt(max_x ** 2 + max_y ** 2)
     images = []
 
-    looses = False
-    score = 0
-    for i in range(max_time):
+    for i in range(Constants.MAX_TIME):
         cp = ref.game.checkpoints
         cp_id1 = ref.game.get_next_checkpoint_id()
         cp_id2 = ref.game.get_next_checkpoint_id(2)
@@ -89,6 +78,7 @@ def run_track(net, ref, create_gif):
                                                              ref.game.car.angle),
         })
 
+        input_net = np.round(input_net, decimals=3).tolist()
         predict = net.activate(input_net)
 
         input_x = int(predict[0] * max_x)
@@ -102,30 +92,21 @@ def run_track(net, ref, create_gif):
         if create_gif and i % 2 == 0:
             images.append(plot_current_frame(cp, cp_id1, ref.game.car))
 
-        # exit earlier
-        if i > (ref.game.currentCheckpoint + 1) * 35:
-            looses = True
-            score += i
-            break
-
         if ref.game.isDone:
-            if i == max_time - 1:
-                looses = True
-            score += i
-            break
+            if create_gif:
+                convert_to_gif(f"track", images)
 
-    if create_gif:
-        convert_to_gif(f"track", images)
-        exit(0)
-    return score, looses
+            bonus = 20 if (i + 1) != Constants.MAX_TIME else 0
+            # thrust_ra = (np.mean(thrust_ratio) // Constants.CAR_MAX_THRUST) * 10
+            return (i + 1) - ref.game.currentCheckpoint - bonus
 
 
 def create_net_input(params):
     input_net = [
         min_max_scaler(params["check1_x"], -params["offset"], params["max_x"]),
         min_max_scaler(params["check1_y"], -params["offset"], params["max_y"]),
-        min_max_scaler(params["check2_x"], -params["offset"], params["max_x"]),
-        min_max_scaler(params["check2_y"], -params["offset"], params["max_y"]),
+        # min_max_scaler(params["check2_x"], -params["offset"], params["max_x"]),
+        # min_max_scaler(params["check2_y"], -params["offset"], params["max_y"]),
         min_max_scaler(params["car_x"], -params["offset"], params["max_x"]),
         min_max_scaler(params["car_y"], -params["offset"], params["max_y"]),
         min_max_scaler(params["dist_check1"], 0, params["max_distance"]),

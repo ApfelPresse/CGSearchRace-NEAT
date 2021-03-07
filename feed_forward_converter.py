@@ -1,5 +1,6 @@
 import base64
 import math
+import os
 import pickle
 import sys
 import types
@@ -398,22 +399,39 @@ class FeedForwardNetwork(object):
 # JUST COPY AND PASTE FROM https://neat-python.readthedocs.io/ TO SERIALIZE IT FOR CODING GAMES
 ###################################################################################################
 ###################################################################################################
-
+# SPLITTER#
 
 def convert_module_to_base64():
     with open("feed_forward_converter.py", "r") as file:
-        neat_module_base64 = base64.b64encode(file.read().encode()).decode()
+        content = file.read()
+        content = content.split("# SPLITTER#")[0]
+        neat_module_base64 = base64.b64encode(content.encode()).decode()
 
-    print(f'neat_module = "{neat_module_base64}"')
-    print('exec(base64.b64decode(neat_module.encode()).decode())')
+        print(f'neat_module = "{neat_module_base64}"')
+        print('exec(base64.b64decode(neat_module.encode()).decode())')
 
 
-def convert_net_to_base64(winner, config):
+def convert_net_to_base64(checkpoint):
+    import neat
+    from main import eval_genomes
+
+    local_dir = os.path.dirname(__file__)
+    config_file = os.path.join(local_dir, 'config-feedforward')
+
+    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
+                         neat.DefaultSpeciesSet, neat.DefaultStagnation,
+                         config_file)
+
+    population = neat.Checkpointer.restore_checkpoint('checkpoints/neat-checkpoint-499')
+    winner = population.run(eval_genomes, 1)
     net = FeedForwardNetwork.create(winner, config)
+
     pickle_string_net = pickle.dumps(net)
     base64_string_net = base64.b64encode(pickle_string_net).decode("utf-8")
-    print(f'net = base64.b64encode("{base64_string_net}").decode("utf-8")')
+    print(f'net = base64.b64decode("{base64_string_net}".encode())')
+    print("back_net = pickle.loads(net)")
 
 
 if __name__ == '__main__':
     convert_module_to_base64()
+    convert_net_to_base64("checkpoints/neat-checkpoint-19276")
