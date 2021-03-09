@@ -422,7 +422,7 @@ def convert_net_to_base64(checkpoint):
                          neat.DefaultSpeciesSet, neat.DefaultStagnation,
                          config_file)
 
-    population = neat.Checkpointer.restore_checkpoint('checkpoints/neat-checkpoint-499')
+    population = neat.Checkpointer.restore_checkpoint(checkpoint)
     winner = population.run(eval_genomes, 1)
     net = FeedForwardNetwork.create(winner, config)
 
@@ -434,4 +434,4 @@ def convert_net_to_base64(checkpoint):
 
 if __name__ == '__main__':
     convert_module_to_base64()
-    convert_net_to_base64("checkpoints/neat-checkpoint-19276")
+    convert_net_to_base64("checkpoints/neat-checkpoint-1432")

@@ -57,7 +57,7 @@ if __name__ == '__main__':
                          config_file)
 
     p = neat.Population(config)
-    # p = neat.Checkpointer.restore_checkpoint('checkpoints/neat-checkpoint-949')
+    # p = neat.Checkpointer.restore_checkpoint('checkpoints/neat-checkpoint-131')
 
     p.add_reporter(neat.StdOutReporter(True))
     stats = neat.StatisticsReporter()
@@ -68,7 +68,7 @@ if __name__ == '__main__':
     get_pool = lambda: pool
 
     try:
-        winner = p.run(eval_genomes, 10000)
+        winner = p.run(eval_genomes, 1000 * 10)
     finally:
         pool.close()
 

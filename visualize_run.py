@@ -1,14 +1,8 @@
 import math
-import os
 
 import imageio
 import matplotlib.pyplot as plt
-import neat
 import numpy as np
-
-from feed_forward_converter import FeedForwardNetwork
-from main import eval_genomes
-from simulation import simulate
 
 
 def convert_to_gif(name: str, frames: list):
@@ -44,17 +38,3 @@ def plot_current_frame(checkpoints, current, car):
 
     plt.close()
     return image
-
-
-if __name__ == '__main__':
-    local_dir = os.path.dirname(__file__)
-    config_file = os.path.join(local_dir, 'config-feedforward')
-
-    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
-                         neat.DefaultSpeciesSet, neat.DefaultStagnation,
-                         config_file)
-
-    population = neat.Checkpointer.restore_checkpoint('checkpoints/neat-checkpoint-99')
-    winner = population.run(eval_genomes, 1)
-    net = FeedForwardNetwork.create(winner, config)
-    simulate(net, create_gif=True)
